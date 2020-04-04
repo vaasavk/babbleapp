@@ -1,55 +1,48 @@
 from flask import Flask, jsonify, request, abort, Response
+import pymongo as database
+import time
 app = Flask(__name__)
 
-@app.route('/')
-def hello_world():
-    return 'hello world!!'
+mongoClient = database.MongoClient("mongodb://mongo:27017")
+mongoBabbles = mongoClient["babble"]["blabs"]
 
-@app.route('/greetings')
-def return_greetings():
-    hello = ["hello", "hey", "whatup"]
-    return jsonify(greetings=hello)    
-
-blabs = [1, 2, 3, 4, 5]
+blabs = []
+idNumber = 0
 
 @app.route('/blabs', methods=['GET'])
 def get_blabs():
     newArray = []
     args = request.args
     initial_time = args.get("createdSince")
-    for blab in blabs:
+    if initial_time is None:
+        initial_time = 0
+    for blab in mongoBabbles.find():
         if (blab.get("postTime") >= int(initial_time)):
             newArray.append(blab)
-    return jsonify(newArray)
+    return make_response(jsonify(newArray), 200)
 
 @app.route('/blabs', methods=['POST'])
 def add_blabs():
-    return 0
+    thisAuthor = request.get_json().get('author')
+    thisMessage = request.get_json().get('message')
+    if (createdSince == None):
+        timeCreated = 0
+    thisBlab = {
+        '_id': idNumber,
+        'postTime': int(time.time()),
+        'author': thisAuthor,
+        'message': thisMessage
+    }
+    idNumber += 1
+    mongoBabbles.insert_one(thisBlab)
+    return make_response(jsonify(response), 201)
     
 @app.route('/blabs/<id>', methods=['DELETE'])
 def remove_blabs(id):
-    for blab in blabs:
-        if blab["id"] == id:
-            blabs.remove(blab)
-        return Response(blab, status=200, mimetype='application/json')
+    idToRemove = {'_id': int(id)}
+    blabToDelete = mongoBabbles.find_one(idToRemove)
+    if blabToDelete:
+        toDelete = blabToDelete.copy()
+        mongoBabbles.delete_one(blabToDelete)
+        return make_response(jsonify(toDelete), 200)
     return abort(404)
-
-
-#{
-#
-#    "id": "string",
-#    "postTime": 0,
-#    "author": 
-#
-#    {
-#        "email": "user@example.com",
-#        "name": "string"
-#    },
-#    "message": "string"
-#
-#}
-
-#structure[key]
-
-app.run()
-
