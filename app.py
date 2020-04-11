@@ -1,16 +1,23 @@
-from flask import Flask, jsonify, request, abort, Response
+from flask import Flask, jsonify, request, abort, Response, make_response
 import pymongo as database
 import time
-app = Flask(__name__)
+from prometheus_flask_exporter import PrometheusMetrics
+from prometheus_client import Counter
 
+app = Flask(__name__)
+metrics = PrometheusMetrics(app)
+totalBlabsCreated = Counter("AllBlabsCounter", "The total amount of blabs that have ever been created")
+totalBlabsRemoved = Counter("BlabsRemoved", "The total amount of blabs that have been deleted")
+totalBlabsGotten = Counter("BlabsGotten", "The total number of times get blabs has been called")
 mongoClient = database.MongoClient("mongodb://mongo:27017")
 mongoBabbles = mongoClient["babble"]["blabs"]
 
 blabs = []
-idNumber = 0
+blabId = 0
 
 @app.route('/blabs', methods=['GET'])
 def get_blabs():
+    totalBlabsGotten.inc()
     newArray = []
     args = request.args
     initial_time = args.get("createdSince")
@@ -23,19 +30,19 @@ def get_blabs():
 
 @app.route('/blabs', methods=['POST'])
 def add_blabs():
+    totalBlabsCreated.inc()
+    global blabId
     thisAuthor = request.get_json().get('author')
     thisMessage = request.get_json().get('message')
-    if (createdSince == None):
-        timeCreated = 0
     thisBlab = {
-        '_id': idNumber,
+        '_id': blabId,
         'postTime': int(time.time()),
         'author': thisAuthor,
         'message': thisMessage
     }
-    idNumber += 1
+    blabId += 1
     mongoBabbles.insert_one(thisBlab)
-    return make_response(jsonify(response), 201)
+    return make_response(jsonify(thisBlab), 201)
     
 @app.route('/blabs/<id>', methods=['DELETE'])
 def remove_blabs(id):
@@ -44,5 +51,7 @@ def remove_blabs(id):
     if blabToDelete:
         toDelete = blabToDelete.copy()
         mongoBabbles.delete_one(blabToDelete)
+        totalBlabsRemoved.inc()
         return make_response(jsonify(toDelete), 200)
     return abort(404)
+    
