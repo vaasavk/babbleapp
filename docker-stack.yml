@@ -1,0 +1,52 @@
+version: "3.7"
+
+services:
+    app:
+        build: ./
+        image: babbleapp
+        working_dir: /app
+        volumes:
+            - ./:/app
+        ports:
+            - 5000:5000
+        environment:
+            FLASK_ENV: development
+            FLASK_APP: /app/app.py
+            DEBUG_METRICS: "false"
+        labels:
+            traefik.http.routers.flask.rule: PathPrefix(/)
+        deploy:
+            replicas: 2
+            placement: 
+                constraints: "node.role==worker"
+
+    proxy:
+        image: traefik:v2.1
+        command: --api.insecure=true --providers.docker
+        ports:
+        - 80:80
+        - 8080:8080
+        volumes:
+        - /var/run/docker.sock:/var/run/docker.sock 
+        deploy:
+            placement: 
+                constraints: "node.role==manager"
+
+    mongo:
+        image: mongo
+        deploy:
+            replicas: 2
+            placement: 
+                constraints: "node.role==worker"
+
+    client:
+        image: vtcs2304s19/blabber-client
+        labels:
+        traefik.http.routers.client.rule: PathPrefix(`/`)
+        deploy:
+            replicas: 2
+            placement:
+                constraints: "node.role==worker"
+
+volumes:
+    grafana-volume:
