@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, abort, Response, make_response
 import pymongo as database
 import time
+from dotenv import load_dotenv
 from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import Counter
 import os
@@ -23,7 +24,7 @@ mongoBabbles = mongoClient["babble"]["blabs"]
 blabs = []
 blabId = 0
 
-@app.route('/blabs', methods=['GET'])
+@app.route('/api/blabs', methods=['GET'])
 def get_blabs():
     totalBlabsGotten.inc()
     newArray = []
@@ -33,26 +34,31 @@ def get_blabs():
         initial_time = 0
     for blab in mongoBabbles.find():
         if (blab.get("postTime") >= int(initial_time)):
-            newArray.append(blab)
+            temp = blab.copy()
+            temp['id'] = str(blab['_id'])
+            del temp['_id']
+            newArray.append(temp)
     return make_response(jsonify(newArray), 200)
 
-@app.route('/blabs', methods=['POST'])
+@app.route('/api/blabs', methods=['POST'])
 def add_blabs():
     totalBlabsCreated.inc()
     global blabId
     thisAuthor = request.get_json().get('author')
     thisMessage = request.get_json().get('message')
     thisBlab = {
-        '_id': blabId,
         'postTime': int(time.time()),
         'author': thisAuthor,
         'message': thisMessage
     }
-    blabId += 1
     mongoBabbles.insert_one(thisBlab)
+    blabId += 1
+    localId = str(thisBlab['_id'])
+    del thisBlab['_id']
+    thisBlab['id'] = localId
     return make_response(jsonify(thisBlab), 201)
     
-@app.route('/blabs/<id>', methods=['DELETE'])
+@app.route('/api/blabs/<id>', methods=['DELETE'])
 def remove_blabs(id):
     idToRemove = {'_id': int(id)}
     blabToDelete = mongoBabbles.find_one(idToRemove)

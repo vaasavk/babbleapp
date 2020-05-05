@@ -15,7 +15,8 @@ services:
             DEBUG_METRICS: "false"
             EnvVarPath: ./.env
         labels:
-            traefik.http.routers.flask.rule: PathPrefix(/)
+            traefik.http.routers.api.rule: PathPrefix(`/api`)
+
 
     proxy:
         image: traefik:v2.1
@@ -42,6 +43,11 @@ services:
             - grafana-volume:/var/lib/grafana
         ports:
             - 3000:3000
+
+    client:
+        image: vtcs2304s19/blabber-client
+        labels:
+            traefik.http.routers.client.rule: PathPrefix(`/`)
 
 volumes:
     grafana-volume:

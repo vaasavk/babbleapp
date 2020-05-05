@@ -10,43 +10,48 @@ services:
         ports:
             - 5000:5000
         environment:
-            FLASK_ENV: development
             FLASK_APP: /app/app.py
-            DEBUG_METRICS: "false"
-        labels:
-            traefik.http.routers.flask.rule: PathPrefix(/)
+            EnvVarPath: ./.env
         deploy:
+            labels:
+                traefik.http.routers.api.rule: PathPrefix(`/api`)
+                traefik.http.services.babble.loadbalancer.server.port: 5000
             replicas: 2
-            placement: 
-                constraints: "node.role==worker"
+            placement:
+                constraints:
+                    - "node.role==worker"
+            
+
 
     proxy:
         image: traefik:v2.1
-        command: --api.insecure=true --providers.docker
+        command: --api.insecure=true --providers.docker.swarmMode=true --providers.docker
         ports:
         - 80:80
         - 8080:8080
         volumes:
         - /var/run/docker.sock:/var/run/docker.sock 
         deploy:
-            placement: 
-                constraints: "node.role==manager"
+            placement:
+                constraints:
+                    - "node.role==manager"
 
     mongo:
         image: mongo
         deploy:
-            replicas: 2
-            placement: 
-                constraints: "node.role==worker"
+            placement:
+                constraints:
+                    - "node.role==worker"
 
     client:
         image: vtcs2304s19/blabber-client
         labels:
-        traefik.http.routers.client.rule: PathPrefix(`/`)
-        deploy:
-            replicas: 2
-            placement:
-                constraints: "node.role==worker"
+            traefik.http.routers.client.rule: PathPrefix(`/`)
+            traefik.http.services.client.loadbalancer.server.port: 80
+        replicas: 2
+        placement:
+            constraints:
+                - "node.role==worker"      
 
 volumes:
     grafana-volume:
